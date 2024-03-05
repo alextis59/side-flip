@@ -80,97 +80,6 @@ const self = {
     },
 
     /**
-     * Asynchronously call given function on each item of the provided list.
-     * The final callback, if provided, is called when all items have been processed or if an error occurs
-     * and the 'throw_error' option is set to true.
-     * 
-     * @param {Array} list - The array of items to be processed.
-     * @param {Function} func - The asynchronous function to apply to each item of the list.
-     *                          It must accept an item and a callback, which should be called with
-     *                          an optional error argument upon completion.
-     * @param {Function} callback - The final callback to be called after processing all items
-     *                              or when an error occurs. If no error occurs, it's called with no arguments.
-     * @param {Object} [options={}] - An optional options object to customize the behavior of the mapping.
-     *                                Available options:
-     *                                  - keep_order: If true, processes items in order, one after the other.
-     *                                  - throw_error: If true, stops processing and calls the final callback
-     *                                                 with the error as soon as any async function calls its callback
-     *                                                 with an error.
-     *                                  - max_concurrency: A number that limits the maximum number of asynchronous
-     *                                                     operations running at the same time.
-     */
-    asyncEachOld: async (list, func, callback, options = {}) => {
-        if (typeof callback === 'object') {
-            options = callback;
-            callback = () => { };
-        } else if (typeof callback !== 'function') {
-            callback = () => { };
-        }
-        if (list.length === 0) {
-            callback();
-            return;
-        }
-        func = self.toAsync(func);
-        if (options.keep_order) {
-            for (let item of list) {
-                try {
-                    await func(item);
-                } catch (err) {
-                    if (options.throw_error) {
-                        callback(err);
-                        throw err;
-                    }
-                }
-            }
-            callback();
-        } else {
-            let max_concurrency = options.max_concurrency || list.length;
-            // Initialize an array to hold the promises
-            let promises = [];
-            let currentIndex = 0; // To track the current index in the list
-
-            // Function to process a single item and handle its completion
-            const processItem = async (item) => {
-                try {
-                    await func(item);
-                } catch (err) {
-                    if (options.throw_error) {
-                        callback(err);
-                        throw err;
-                    }
-                }
-            };
-
-            // Main loop to manage concurrency
-            while (currentIndex < list.length) {
-                // While there are items left to process and we haven't reached max concurrency
-                while (currentIndex < list.length && promises.length < max_concurrency) {
-                    let promise = self.getTrackedPromise(processItem(list[currentIndex++]));
-                    promises.push(promise);
-                }
-
-                try {
-                    // Wait for at least one promise to finish
-                    await Promise.race(promises);
-                } catch (err) {
-                    // If Promise.race throws, it's already handled inside processItem
-                }
-
-                // Remove settled promises from the array
-                promises = promises.filter(p => p.getStatus() === 'pending');
-            }
-
-            // Wait for all remaining promises to settle
-            try {
-                await Promise.all(promises);
-            } catch (err) {
-                // Errors are already handled per item
-            }
-            callback(); // Call the final callback if all operations are successful
-        }
-    },
-
-    /**
      * Asynchronously map given function on each item of the provided list.
      * The final callback, if provided, is called when all items have been processed with the result of the map or if an error occurs
      * and the 'throw_error' option is set to true.
@@ -276,6 +185,26 @@ const self = {
         }
     },
 
+    /**
+     * Asynchronously call given function on each item of the provided list.
+     * The final callback, if provided, is called when all items have been processed or if an error occurs
+     * and the 'throw_error' option is set to true.
+     * 
+     * @param {Array} list - The array of items to be processed.
+     * @param {Function} func - The asynchronous function to apply to each item of the list.
+     *                          It must accept an item and a callback, which should be called with
+     *                          an optional error argument upon completion.
+     * @param {Function} callback - The final callback to be called after processing all items
+     *                              or when an error occurs. If no error occurs, it's called with no arguments.
+     * @param {Object} [options={}] - An optional options object to customize the behavior of the mapping.
+     *                                Available options:
+     *                                  - keep_order: If true, processes items in order, one after the other.
+     *                                  - throw_error: If true, stops processing and calls the final callback
+     *                                                 with the error as soon as any async function calls its callback
+     *                                                 with an error.
+     *                                  - max_concurrency: A number that limits the maximum number of asynchronous
+     *                                                     operations running at the same time.
+     */
     asyncEach: async (list, func, callback, options = {}) => {
         await self.asyncMap(list, func, callback, options);
     }
