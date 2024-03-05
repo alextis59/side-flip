@@ -5,10 +5,10 @@ const self = {
     /**
      * Converts a number to its equivalent hexadecimal value.
      * @param {number} n - The number to be converted.
-     * @param {string} hexType - The type of hexadecimal value to be returned. Acceptable values are "byte" and "short".
+     * @param {string} hexType - The type of hexadecimal value to be returned. Acceptable values are "byte" and "short" (if undefined, no control on size).
      * @returns {string} The hexadecimal value of the given number, prefixed with "0x".
      */
-    getHex: (n, hexType = "byte") => {
+    getHex: (n, hexType) => {
         n = parseInt(n);
         let hex = n.toString(16);
         if (hexType === "byte" && hex.length === 1) {
@@ -89,6 +89,25 @@ const self = {
             chunks.push(hex.substring(i, i + 2));
         }
         return chunks.reverse().join("")
+    },
+
+    /**
+     * Get random hex string of length n
+     * @param {number} n - length of string
+     * @returns {string} random hex string
+     */
+    getRandomHexString: (n) => {
+        if (isNaN(n)) {
+            throw new Error("n must be a number");
+        }
+        if (n <= 0) {
+            return "";
+        }
+        let hex = _.random(Math.pow(2, n * 4)).toString(16);
+        while (hex.length < n) {
+            hex += "0";
+        }
+        return hex;
     },
 
 }

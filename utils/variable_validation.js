@@ -1,4 +1,5 @@
-const _ = require('lodash');
+const _ = require('lodash'),
+    moment = require('moment');
 
 const self = {
 
@@ -82,13 +83,13 @@ const self = {
             return false;
         } else if (options.email === true && !self.isEmail(value)){
             return false;
-        }else if (options.phone === true && !self.isPhoneNumber(value)){
+        } else if (options.phone === true && !self.isPhoneNumber(value)){
             return false;
-        }else if (options.time === true && !self.isTime(value)){
+        } else if (options.time === true && !self.isTime(value)){
             return false;
-        }else if (options.date === true && !self.isDate(value)){
+        } else if (options.date === true && !self.isDate(value)){
             return false;
-        }else if (options.iso_date === true && !self.isIsoDate(value)){
+        } else if (options.iso_date === true && !self.isIsoDate(value)){
             return false;
         }
         let attr_list = options.attr_list || options.attrs;
@@ -178,9 +179,14 @@ const self = {
             return false;
         if (parts.length === 3 && parts[2].length !== 2)
             return false;
+        if (!self.isIntegerString(parts[0]) || !self.isIntegerString(parts[1]) || (parts.length === 3 && !self.isIntegerString(parts[2])))
+            return false;
         let h = parseInt(parts[0]),
             m = parseInt(parts[1]),
             s = parts.length === 3 && parseInt(parts[2]);
+        if(isNaN(h) || isNaN(m) || (parts.length === 3 && isNaN(s))){
+            return false;
+        }
         if (h < 0 || h > 23 || m < 0 || m > 59 || (s && (s < 0 || s > 59)))
             return false;
         return true;
@@ -195,10 +201,17 @@ const self = {
         let parts = value.split(separator);
         if (parts.length !== 3)
             return false;
+        if (parts[0].length !== 2 || parts[1].length !== 2 || parts[2].length !== 4)
+            return false;
+        if (!self.isIntegerString(parts[0]) || !self.isIntegerString(parts[1]) || !self.isIntegerString(parts[2]))
+            return false;
         let d = parseInt(parts[0]),
             m = parseInt(parts[1]),
             y = parseInt(parts[2]);
-        if (d < 1 || d > 31 || m < 1 || m > 12 || y < 0 || y > 2100)
+        if(isNaN(d) || isNaN(m) || isNaN(y)){
+            return false;
+        }
+        if (d < 1 || d > 31 || m < 1 || m > 12 || y < 0 || y > 2999)
             return false;
         return true;
     },
@@ -212,5 +225,7 @@ const self = {
         return moment(value, moment.ISO_8601).isValid();
     },
 }
+
+self.checkVar = self.checkVariable;
 
 module.exports = self;
