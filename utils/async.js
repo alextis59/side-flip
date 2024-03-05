@@ -56,6 +56,29 @@ const self = {
         };
     },
 
+    getTrackedPromise: (promise) => {
+        let status = "pending";
+        let result;
+
+        const trackedPromise = promise.then(
+            value => {
+                status = "fulfilled";
+                result = value;
+                return value;
+            },
+            error => {
+                status = "rejected";
+                result = error;
+                throw error;
+            }
+        );
+
+        trackedPromise.getStatus = () => status;
+        trackedPromise.getResult = () => result;
+
+        return trackedPromise;
+    },
+
     /**
      * Asynchronously call given function on each item of the provided list.
      * The final callback, if provided, is called when all items have been processed or if an error occurs
@@ -76,7 +99,7 @@ const self = {
      *                                  - max_concurrency: A number that limits the maximum number of asynchronous
      *                                                     operations running at the same time.
      */
-    asyncEach: async (list, func, callback, options = {}) => {
+    asyncEachOld: async (list, func, callback, options = {}) => {
         if (typeof callback === 'object') {
             options = callback;
             callback = () => { };
@@ -99,6 +122,7 @@ const self = {
                     }
                 }
             }
+            callback();
         } else {
             let max_concurrency = options.max_concurrency || list.length;
             // Initialize an array to hold the promises
@@ -121,7 +145,7 @@ const self = {
             while (currentIndex < list.length) {
                 // While there are items left to process and we haven't reached max concurrency
                 while (currentIndex < list.length && promises.length < max_concurrency) {
-                    let promise = processItem(list[currentIndex++]);
+                    let promise = self.getTrackedPromise(processItem(list[currentIndex++]));
                     promises.push(promise);
                 }
 
@@ -133,16 +157,16 @@ const self = {
                 }
 
                 // Remove settled promises from the array
-                promises = promises.filter(p => !p.isResolved);
+                promises = promises.filter(p => p.getStatus() === 'pending');
             }
 
             // Wait for all remaining promises to settle
             try {
                 await Promise.all(promises);
-                callback(); // Call the final callback if all operations are successful
             } catch (err) {
                 // Errors are already handled per item
             }
+            callback(); // Call the final callback if all operations are successful
         }
     },
 
@@ -203,56 +227,57 @@ const self = {
             let results = new Array(list.length);
             let currentIndex = 0;
 
-            // Start initial batch of promises
-            while (currentIndex < list.length && promises.length < max_concurrency) {
-                ((index) => {
-                    let promise = func(list[index]).then(result => {
-                        results[index] = result; // Store result in the corresponding position
-                    }).catch(err => {
-                        if (options.throw_error) {
-                            throw err;
-                        }
-                        results[index] = undefined; // Or handle the error as appropriate
-                    });
-                    promises.push(promise);
-                })(currentIndex);
-                currentIndex++;
-            }
-
-            // Function to start a new promise when one finishes, maintaining max_concurrency
-            const replenishPromises = async () => {
-                while (currentIndex < list.length) {
-                    // Wait for any promise to finish
-                    await Promise.race(promises);
-                    promises = promises.filter(p => !p.isFulfilled);
-
-                    if (currentIndex < list.length) {
-                        ((index) => {
-                            let promise = func(list[index]).then(result => {
-                                results[index] = result;
-                            }).catch(err => {
-                                if (options.throw_error) {
-                                    throw err;
-                                }
-                                results[index] = undefined; // Or handle the error as appropriate
-                            });
-                            promises.push(promise);
-                        })(currentIndex);
-                        currentIndex++;
+            // Function to process a single item and handle its completion
+            const processItem = async (item, index) => {
+                try {
+                    let result = await func(item);
+                    results[index] = result; // Store result in the corresponding position
+                } catch (err) {
+                    if (options.throw_error) {
+                        throw err;
                     }
+                    results[index] = undefined; // Or handle the error as appropriate
                 }
             };
 
-            // Replenish promises until all items are processed
-            await replenishPromises();
+            // Main loop to manage concurrency
+            while (currentIndex < list.length) {
+                // While there are items left to process and we haven't reached max concurrency
+                while (currentIndex < list.length && promises.length < max_concurrency) {
+                    let promise = self.getTrackedPromise(processItem(list[currentIndex], currentIndex++));
+                    promises.push(promise);
+                }
 
-            // Wait for all remaining promises to finish
-            await Promise.all(promises);
+                try {
+                    // Wait for at least one promise to finish
+                    await Promise.race(promises);
+                } catch (err) {
+                    if (options.throw_error) {
+                        callback(err);
+                        throw err;
+                    }
+                }
 
+                // Remove settled promises from the array
+                promises = promises.filter(p => p.getStatus() === 'pending');
+            }
+
+            // Wait for all remaining promises to settle
+            try {
+                await Promise.all(promises);
+            } catch (err) {
+                if (options.throw_error) {
+                    callback(err);
+                    throw err;
+                }
+            }
             callback(undefined, results);
             return results;
         }
+    },
 
+    asyncEach: async (list, func, callback, options = {}) => {
+        await self.asyncMap(list, func, callback, options);
     }
 }
 
