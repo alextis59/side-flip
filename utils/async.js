@@ -28,6 +28,10 @@ const self = {
         });
     },
 
+    isAsyncFunction: (fn) => {
+        return _.get(fn, 'constructor.name') === 'AsyncFunction';
+    },
+
     /**
      * Converts a function that accepts any number of arguments with the last one being a Callback into an async function.
      * If the input function is already an async function, it returns it directly.
@@ -37,7 +41,7 @@ const self = {
      */
     toAsync: (fn) => {
         // Check if fn is an async function
-        if (fn[Symbol.toStringTag] === 'AsyncFunction') {
+        if (self.isAsyncFunction(fn)) {
             return fn;
         }
         return async function (...args) {

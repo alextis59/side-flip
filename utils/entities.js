@@ -23,6 +23,27 @@ const self = {
         return Object.values(counts);
     },
 
+    queryMatchCustomizer: (object_value, query_value) => {
+        if(_.isEqual(object_value, query_value)) {
+            return true;
+        }
+        if(query_value.$ne != null){
+            return true;
+        }
+        if(query_value.$in != null){
+            for(let value of query_value.$in){
+                if(_.isEqual(object_value, value)){
+                    return true;
+                }
+            }
+        }
+        return false;
+    },
+
+    entityMatchQuery: (entity, query) => {
+        return _.isMatchWith(entity, query, self.queryMatchCustomizer);
+    }
+
 }
 
 module.exports = self;
