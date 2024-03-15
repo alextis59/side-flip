@@ -226,6 +226,4 @@ const self = {
     },
 }
 
-self.checkVar = self.checkVariable;
-
 module.exports = self;
