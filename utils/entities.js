@@ -27,7 +27,7 @@ const self = {
         if(_.isEqual(object_value, query_value)) {
             return true;
         }
-        if(query_value.$ne != null){
+        if(query_value.$ne != null && !_.isEqual(object_value, query_value.$ne)){
             return true;
         }
         if(query_value.$in != null){

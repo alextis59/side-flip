@@ -109,7 +109,7 @@ const self = {
         }
         if (options.array_content_type) {
             for (let item of value) {
-                if (!self.checkVar(item, options.array_content_type)){
+                if (!self.checkVariable(item, options.array_content_type)){
                     return false;
                 }
             }
