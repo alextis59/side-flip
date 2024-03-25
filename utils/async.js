@@ -39,7 +39,7 @@ const self = {
      * @param {Function} fn - The original function to convert. It should accept any number of arguments with the last one being a Callback.
      * @returns {Function} An async function or the original async function if already async.
      */
-    toAsync: (fn) => {
+    toAsync: (fn, context = null) => {
         // Check if fn is an async function
         if (self.isAsyncFunction(fn)) {
             return fn;
@@ -55,7 +55,8 @@ const self = {
                     }
                 });
                 // Apply the arguments to the original function
-                fn.apply(this, args);
+                // If context is not provided, 'this' will be used which refers to the global object or undefined in strict mode
+                fn.apply(context || this, args);
             });
         };
     },

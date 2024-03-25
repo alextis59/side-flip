@@ -1,4 +1,5 @@
-const _ = require('lodash');
+const _ = require('lodash'),
+ {getFlattenedObject} = require('./objects');
 
 const self = {
 
@@ -27,6 +28,13 @@ const self = {
         if(_.isEqual(object_value, query_value)) {
             return true;
         }
+        if(query_value.$exists != null){
+            if(query_value.$exists){
+                return object_value !== undefined;
+            }else{
+                return object_value === undefined;
+            }
+        }
         if(query_value.$ne != null && !_.isEqual(object_value, query_value.$ne)){
             return true;
         }
@@ -40,8 +48,25 @@ const self = {
         return false;
     },
 
+    getFilledEntityForCheck: (entity, query) => {
+        let clone = _.cloneDeep(entity),
+            flat_query = getFlattenedObject(query);
+        for(let target in flat_query){
+            let keys = target.split('.'),
+                last = keys.pop();
+            if(last.includes('$')){
+                let attr_target = keys.join('.');
+                if(_.get(clone, attr_target) === undefined){
+                    _.set(clone, attr_target, undefined);
+                }
+            }
+        }
+        return clone;
+    },
+
     entityMatchQuery: (entity, query) => {
-        return _.isMatchWith(entity, query, self.queryMatchCustomizer);
+        let target = self.getFilledEntityForCheck(entity, query);
+        return _.isMatchWith(target, query, self.queryMatchCustomizer);
     }
 
 }
