@@ -140,6 +140,82 @@ const self = {
         }
     },
 
+    queryMatchCustomizer: (object_value, query_value) => {
+        if(_.isEqual(object_value, query_value)) {
+            return true;
+        }
+        if(query_value.$exists != null){
+            if(query_value.$exists){
+                return object_value !== undefined;
+            }else{
+                return object_value === undefined;
+            }
+        }
+        if(query_value.$ne != null){
+            return !_.isEqual(object_value, query_value.$ne);
+        }
+        if(query_value.$in != null){
+            for(let value of query_value.$in){
+                if(_.isEqual(object_value, value)){
+                    return true;
+                }
+            }
+            return false;
+        }
+        if(query_value.$nin != null){
+            for(let value of query_value.$nin){
+                if(_.isEqual(object_value, value)){
+                    return false;
+                }
+            }
+            return true;
+        }
+        if(query_value.$gt != null){
+            return object_value > query_value.$gt;
+        }
+        if(query_value.$gte != null){
+            return object_value >= query_value.$gte;
+        }
+        if(query_value.$lt != null){
+            return object_value < query_value.$lt;
+        }
+        if(query_value.$lte != null){
+            return object_value <= query_value.$lte;
+        }
+        if(query_value.$regex != null){
+            return new RegExp(query_value.$regex).test(object_value);
+        }
+        if(query_value.$size != null){
+            return object_value.length === query_value.$size;
+        }
+        if(typeof query_value === 'object' && typeof object_value === 'object'){
+            return _.isMatchWith(object_value, query_value, self.queryMatchCustomizer);
+        }
+
+        return false;
+    },
+
+    getFilledObjectForCheck: (obj, query) => {
+        let clone = _.cloneDeep(obj),
+            flat_query = self.getFlattenedObject(query);
+        for(let target in flat_query){
+            let keys = target.split('.'),
+                last = keys.pop();
+            if(last.includes('$')){
+                let attr_target = keys.join('.');
+                if(_.get(clone, attr_target) === undefined){
+                    _.set(clone, attr_target, undefined);
+                }
+            }
+        }
+        return clone;
+    },
+
+    objectMatchQuery: (obj, query) => {
+        let target = self.getFilledObjectForCheck(obj, query);
+        return _.isMatchWith(target, query, self.queryMatchCustomizer);
+    }
+
 }
 
 module.exports = self;
