@@ -144,6 +144,9 @@ const self = {
         if(_.isEqual(object_value, query_value)) {
             return true;
         }
+        if(query_value == null){
+            return false;
+        }
         if(query_value.$exists != null){
             if(query_value.$exists){
                 return object_value !== undefined;
@@ -186,7 +189,7 @@ const self = {
             return new RegExp(query_value.$regex).test(object_value);
         }
         if(query_value.$size != null){
-            return object_value.length === query_value.$size;
+            return object_value && object_value.length === query_value.$size;
         }
         if(typeof query_value === 'object' && typeof object_value === 'object'){
             return _.isMatchWith(object_value, query_value, self.queryMatchCustomizer);
@@ -206,6 +209,8 @@ const self = {
                 if(_.get(clone, attr_target) === undefined){
                     _.set(clone, attr_target, undefined);
                 }
+            }else if(flat_query[target] === undefined){
+                _.set(clone, target, undefined);
             }
         }
         return clone;
